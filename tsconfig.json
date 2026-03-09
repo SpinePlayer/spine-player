@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "jsx": "preserve",
+    "lib": [
+      "esnext",
+      "dom",
+      "dom.iterable",
+      "scripthost"
+    ],
+    "useDefineForClassFields": true,
+    "baseUrl": ".",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": [
+        "example/src/*"
+      ],
+      "spine-player": [
+        "src/*"
+      ]
+    },
+    "types": [
+      "node"
+    ],
+    "strict": true,
+    "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "src/type.d.ts",
+    "src/shims-vue.d.ts",
+    "components.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
