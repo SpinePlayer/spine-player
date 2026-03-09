@@ -1,0 +1,23 @@
+{
+  "presets": [
+    [
+      "@babel/preset-typescript",
+      {
+        "isTSX": false,
+        "allExtensions": false
+      }
+    ],
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "android": "4.4",
+          "chrome": "30"
+        },
+        "useBuiltIns": "usage",
+        "corejs": 3,
+        "modules": false
+      }
+    ]
+  ]
+}
