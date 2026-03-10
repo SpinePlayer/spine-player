@@ -1,4 +1,4 @@
-# spine-player
+# spine-web-player
 
 基于 [Spine](https://esotericsoftware.com/) 官方运行时（Canvas / WebGL）封装的 Web 端 Spine 动画播放库，支持单实例与多实例管理，并提供 Vue3 组件。
 
@@ -13,9 +13,9 @@
 ## 安装
 
 ```bash
-pnpm add spine-player
+pnpm add spine-web-player
 # 或
-npm i spine-player
+npm i spine-web-player
 ```
 
 ## 使用方式
@@ -25,7 +25,7 @@ npm i spine-player
 挂载一个容器（如 `canvas` 或 `div`），创建 `SpinePlayer` 并加载资源：
 
 ```ts
-import SpinePlayer from 'spine-player';
+import SpinePlayer from 'spine-web-player';
 
 const container = document.querySelector('#container'); // 或 HTMLCanvasElement
 const player = new SpinePlayer(container, {
@@ -66,7 +66,7 @@ player.getAnimations();
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { VSpinePlayer } from 'spine-player/vue3';
+import { VSpinePlayer } from 'spine-web-player/vue3';
 
 const assets = {
   skel: '/path/to/xxx.skel',
@@ -88,7 +88,7 @@ const rawPlayer = playerRef.value?.getPlayer();
 
 ```ts
 import { createApp } from 'vue';
-import { VSpinePlayerPlugin } from 'spine-player/vue3';
+import { VSpinePlayerPlugin } from 'spine-web-player/vue3';
 import App from './App.vue';
 
 const app = createApp(App);
@@ -101,7 +101,7 @@ app.mount('#app');
 同一画布内管理多个 Spine 实例（层级、暂停/恢复、统一渲染等）：
 
 ```ts
-import { SpineManage, SpineTools } from 'spine-player';
+import { SpineManage, SpineTools } from 'spine-web-player';
 
 const container = document.querySelector('#container');
 const manager = new SpineManage(container, { /* 渲染配置 */ });

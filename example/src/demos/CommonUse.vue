@@ -23,7 +23,7 @@
 
 <script setup lang="ts">
 import { shallowRef, onMounted, reactive, computed } from "vue";
-import SpinePlayer, { SpineTools } from "spine-player";
+import SpinePlayer, { SpineTools } from "spine-web-player";
 import { ASSETS } from "../config";
 
 const followPosition = reactive({

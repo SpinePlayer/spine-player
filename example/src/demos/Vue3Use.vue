@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { shallowRef, onMounted } from "vue";
-import { VSpinePlayer } from "spine-player/vue3";
+import { VSpinePlayer } from "spine-web-player/vue3";
 import { ASSETS } from "../config";
 
 const animationName = shallowRef("");

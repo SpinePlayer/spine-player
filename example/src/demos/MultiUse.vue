@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 import FpsCounter from "../components/FpsCounter.vue";
-import { SpineManage, SpineTools } from "spine-player";
+import { SpineManage, SpineTools } from "spine-web-player";
 import { ASSETS } from "../config";
 
 const container = ref<HTMLElement>();

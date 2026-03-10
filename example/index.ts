@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import App from './src/index.vue'
-import { SpinePlugins } from 'spine-player';
+import { SpinePlugins } from 'spine-web-player';
 
 // 注册插件
 SpinePlugins.use({
