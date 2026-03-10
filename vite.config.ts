@@ -20,7 +20,7 @@ export default defineConfig(({ command }) => {
       alias: {
         '@': resolve(__dirname, 'example/src'),
         'src': resolve(__dirname, 'src'),
-        'spine-player': resolve(__dirname, 'src')
+        'spine-web-player': resolve(__dirname, 'src')
       }
     },
     css: {
