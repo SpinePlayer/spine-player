@@ -11,11 +11,19 @@ import {
   Event as SpineEvent,
   AnimationStateData,
   AtlasAttachmentLoader,
-} from '@esotericsoftware/spine-canvas';
-import logger from './utils/logger';
-import SpineUtils from './SpineUtils';
-import { DEFAULT_MIX } from './utils/constant';
-import type { ISpineConfig, ISpineOptions, IBound, IUpdateConfig, IBonePosition, IBackground, OnUpdateCallback } from './type';
+} from "@esotericsoftware/spine-canvas";
+import logger from "./utils/logger";
+import SpineUtils from "./SpineUtils";
+import { DEFAULT_MIX } from "./utils/constant";
+import type {
+  ISpineConfig,
+  ISpineOptions,
+  IBound,
+  IUpdateConfig,
+  IBonePosition,
+  IBackground,
+  OnUpdateCallback,
+} from "./type";
 
 export default class SpinePlayer {
   /**
@@ -40,6 +48,8 @@ export default class SpinePlayer {
 
   // 帧回调id
   private rafId = -1;
+  /** is disposed */
+  private disposed = false;
   /** Tracks the current time, delta, and other time related statistics. */
   private time = new TimeKeeper();
   /** The canvas context. */
@@ -52,26 +62,38 @@ export default class SpinePlayer {
   constructor(el: HTMLElement | HTMLCanvasElement, options: ISpineOptions) {
     this.onUpdate = options.onUpdate;
     this.htmlCanvas = SpineUtils.getCanvas(el);
-    this.context = this.htmlCanvas.getContext('2d') as CanvasRenderingContext2D;
+    this.context = this.htmlCanvas.getContext("2d") as CanvasRenderingContext2D;
     this.assetManager = new AssetManager();
     this.renderer = new SkeletonRenderer(this.context);
     this.renderer.triangleRendering = options.triangleRendering || false;
     // 设置背景
     this.setBackground(options?.background);
   }
+
+  public get isDisposed() {
+    return this.disposed;
+  }
+
   /**
    * 设置背景
    */
-  public async setBackground(background?: IBackground | string, immediatelyRender?: boolean) {
+  public async setBackground(
+    background?: IBackground | string,
+    immediatelyRender?: boolean,
+  ) {
     if (!background) {
       this.backgroundConfig = null;
       return;
     }
-    if (typeof background === 'string') {
-      if (background.startsWith('#') || background.startsWith('rgb') || background.startsWith('rgba')) {
+    if (typeof background === "string") {
+      if (
+        background.startsWith("#") ||
+        background.startsWith("rgb") ||
+        background.startsWith("rgba")
+      ) {
         this.backgroundConfig = { color: background };
       } else {
-        this.backgroundConfig = { imageUrl: background, fit: 'cover' };
+        this.backgroundConfig = { imageUrl: background, fit: "cover" };
       }
     } else {
       this.backgroundConfig = background;
@@ -93,14 +115,18 @@ export default class SpinePlayer {
     const cacheKey = this.backgroundConfig.cacheKey || imageUrl;
     try {
       await this.loadTexture({
-        [cacheKey]: imageUrl
-      })
+        [cacheKey]: imageUrl,
+      });
     } catch (err) {
-      logger.error('背景图片加载失败:', err);
+      logger.error("背景图片加载失败:", err);
     }
   }
 
   public async loadSpine(config: ISpineConfig) {
+    if (this.isDisposed) {
+      logger.warning("当前实例已销毁，无法加载动画");
+      return;
+    }
     // 销毁之前的动画
     this.stop();
     this.cleanCurrentAnimation(config.cleanAssetsCache);
@@ -109,13 +135,20 @@ export default class SpinePlayer {
     // 初始化配置
     this.config = config;
     this.loop = config.loop || false;
-    this.animationName = config.animationName || '';
+    this.animationName = config.animationName || "";
     // 默认自动播放
     if (config.autoPlay === void 0) {
       this.config.autoPlay = true;
     }
     // 加载资源
-    const { isBinary, skelData, atlasData } = await SpineUtils.loadAssets(this.config, this.assetManager);
+    const { isBinary, skelData, atlasData } = await SpineUtils.loadAssets(
+      this.config,
+      this.assetManager,
+    );
+    if (this.isDisposed) {
+      this.dispose();
+      return;
+    }
     // Create the texture atlas and skeleton data.
     const atlasLoader = new AtlasAttachmentLoader(atlasData);
     // Create a SkeletonBinary instance for parsing the .skel file.
@@ -168,7 +201,11 @@ export default class SpinePlayer {
     if (!this.animationName || !this.skeleton) return;
     const animation = this.skeleton.data.findAnimation(this.animationName);
     if (!animation) return;
-    this.bounds = SpineUtils.calculateAnimationViewport(this.skeleton, animation, this.config.dynamicCalcBound);
+    this.bounds = SpineUtils.calculateAnimationViewport(
+      this.skeleton,
+      animation,
+      this.config.dynamicCalcBound,
+    );
   }
 
   private resize() {
@@ -185,8 +222,12 @@ export default class SpinePlayer {
     const scaleX = this.htmlCanvas.width / this.bounds.width;
     const scaleY = this.htmlCanvas.height / this.bounds.height;
     const scale = Math.min(scaleX, scaleY) * customScale;
-    this.skeleton.x = (this.htmlCanvas.width - this.bounds.width * scale) / 2 - this.bounds.x * scale;
-    this.skeleton.y = (this.htmlCanvas.height + this.bounds.height * scale) / 2 + this.bounds.y * scale;
+    this.skeleton.x =
+      (this.htmlCanvas.width - this.bounds.width * scale) / 2 -
+      this.bounds.x * scale;
+    this.skeleton.y =
+      (this.htmlCanvas.height + this.bounds.height * scale) / 2 +
+      this.bounds.y * scale;
     this.skeleton.scaleX = scale;
     this.skeleton.scaleY = -scale;
 
@@ -211,7 +252,15 @@ export default class SpinePlayer {
     const canvasHeight = this.htmlCanvas.height;
     const imgWidth = image.width;
     const imgHeight = image.height;
-    const { drawWidth, drawHeight, drawX, drawY } = SpineUtils.getImageFitViewport(canvasWidth, canvasHeight, imgWidth, imgHeight, fit, true);
+    const { drawWidth, drawHeight, drawX, drawY } =
+      SpineUtils.getImageFitViewport(
+        canvasWidth,
+        canvasHeight,
+        imgWidth,
+        imgHeight,
+        fit,
+        true,
+      );
     this.context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
   }
 
@@ -238,7 +287,7 @@ export default class SpinePlayer {
     try {
       if (this.onUpdate) this.onUpdate(this.time);
     } catch (err) {
-      logger.warning('onUpdate 出错:', err);
+      logger.warning("onUpdate 出错:", err);
     }
 
     try {
@@ -253,7 +302,7 @@ export default class SpinePlayer {
         this.config?.hooks?.onFirstDraw(this);
       }
     } catch (err) {
-      logger.error('渲染出错:', err);
+      logger.error("渲染出错:", err);
     }
 
     this.rafId = requestAnimationFrame(() => {
@@ -263,9 +312,9 @@ export default class SpinePlayer {
 
   public clear() {
     if (this.backgroundConfig && this.backgroundConfig?.color) {
-      this.context.fillStyle = this.backgroundConfig?.color || 'transparent';
+      this.context.fillStyle = this.backgroundConfig?.color || "transparent";
     } else {
-      this.context.fillStyle = 'transparent'; // 设置填充颜色为透明
+      this.context.fillStyle = "transparent"; // 设置填充颜色为透明
     }
     this.context.clearRect(0, 0, this.htmlCanvas.width, this.htmlCanvas.height);
     this.context.fillRect(0, 0, this.htmlCanvas.width, this.htmlCanvas.height);
@@ -279,9 +328,14 @@ export default class SpinePlayer {
   /**
    * 增加slot挂点跟随
    */
-  public addSlotFollowListener(slotName: string, callback: (arg1?: IBonePosition) => void) {
+  public addSlotFollowListener(
+    slotName: string,
+    callback: (arg1?: IBonePosition) => void,
+  ) {
     if (this.followSlots.get(slotName)) {
-      logger.warning(`当前slotName【${slotName}】挂点跟随监听已存在，请勿重复添加`);
+      logger.warning(
+        `当前slotName【${slotName}】挂点跟随监听已存在，请勿重复添加`,
+      );
       return;
     }
     this.followSlots.set(slotName, callback);
@@ -305,7 +359,7 @@ export default class SpinePlayer {
         }
       }
     } catch (err) {
-      logger.error('更新slot挂点跟随出错:', err);
+      logger.error("更新slot挂点跟随出错:", err);
     }
   }
 
@@ -314,7 +368,11 @@ export default class SpinePlayer {
    */
   public async loadTexture(texture: string | Record<string, string>) {
     if (!texture) return;
-    SpineUtils.loadTexture(texture, this.assetManager, this.config?.assets?.basePath);
+    SpineUtils.loadTexture(
+      texture,
+      this.assetManager,
+      this.config?.assets?.basePath,
+    );
     await this.assetManager.loadAll();
   }
 
@@ -334,7 +392,7 @@ export default class SpinePlayer {
   }
 
   public getVersion() {
-    if (!this.skeleton) return '';
+    if (!this.skeleton) return "";
     return this.skeleton.data.version;
   }
 
@@ -393,13 +451,22 @@ export default class SpinePlayer {
     textureName: string,
     persistent?: boolean,
   ) {
-    return SpineUtils.hackTextureBySlotName(this.skeleton, this.assetManager, textureName, slotName, persistent);
+    return SpineUtils.hackTextureBySlotName(
+      this.skeleton,
+      this.assetManager,
+      textureName,
+      slotName,
+      persistent,
+    );
   }
 
   public changeSlot(slotName: string, attachmentName: string) {
     if (!this.skeleton) return;
     const slot = this.skeleton.findSlot(slotName);
-    const newAttachment = this.skeleton.getAttachmentByName(slotName, attachmentName);
+    const newAttachment = this.skeleton.getAttachmentByName(
+      slotName,
+      attachmentName,
+    );
     if (slot !== null && newAttachment) {
       slot.attachment = newAttachment;
     }
@@ -415,17 +482,17 @@ export default class SpinePlayer {
    * @param trackIndex 动画轨道索引，默认为 0
    */
   public seekToTime(time: number, trackIndex: number = 0) {
-    if (typeof time !== 'number' || time < 0) {
-      logger.warning('时间参数必须是大于等于0的数字');
+    if (typeof time !== "number" || time < 0) {
+      logger.warning("时间参数必须是大于等于0的数字");
       return;
     }
     if (!this.animationState || !this.skeleton) {
-      logger.warning('动画数据未完成加载');
+      logger.warning("动画数据未完成加载");
       return;
     }
     const track = this.animationState.tracks[trackIndex];
     if (!track) {
-      logger.warning('当前动画轨道不存在');
+      logger.warning("当前动画轨道不存在");
       return;
     }
     // 设置轨道时间
@@ -454,9 +521,13 @@ export default class SpinePlayer {
   /**
    * 设置动画名称
    */
-  public setAnimationName(animationName: string, loop?: boolean, trackIndex?: number) {
+  public setAnimationName(
+    animationName: string,
+    loop?: boolean,
+    trackIndex?: number,
+  ) {
     if (!this.hasAnimation(animationName)) {
-      logger.error('该动画不存在');
+      logger.error("该动画不存在");
       return false;
     }
     if (this.animationName !== animationName) {
@@ -479,10 +550,14 @@ export default class SpinePlayer {
   /**
    * 播放指定动画
    */
-  public playAnimation(animationName: string, loop?: boolean, trackIndex?: number) {
+  public playAnimation(
+    animationName: string,
+    loop?: boolean,
+    trackIndex?: number,
+  ) {
     try {
       if (!this.animationState) {
-        logger.error('动画数据未加载完成');
+        logger.error("动画数据未加载完成");
         return;
       }
       // Set new animation
@@ -494,7 +569,7 @@ export default class SpinePlayer {
         this.render(true);
       }
     } catch (err) {
-      logger.error('播放出错:', err);
+      logger.error("播放出错:", err);
     }
   }
 
@@ -523,6 +598,7 @@ export default class SpinePlayer {
   public dispose() {
     this.stop();
     this.cleanCurrentAnimation(true);
+    this.disposed = true;
   }
 
   private cleanCurrentAnimation(cleanCache?: boolean) {
