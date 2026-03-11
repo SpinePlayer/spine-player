@@ -73,6 +73,10 @@ export default class SpinePlayer {
     return this.instance.isPaused;
   }
 
+  public get isDisposed() {
+    return this.instance.isDisposed;
+  }
+
   public loadSpine(config: ISpineConfig) {
     return this.instance.loadSpine(config);
   }

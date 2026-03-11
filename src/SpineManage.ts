@@ -13,18 +13,28 @@ import {
   AnimationStateData,
   AtlasAttachmentLoader,
   ManagedWebGLRenderingContext,
-} from '@esotericsoftware/spine-webgl';
-import logger from './utils/logger';
-import SpineUtils from './SpineUtils';
-import { parseColor } from './utils/tool';
-import { DEFAULT_MIX } from './utils/constant';
-import type { ISpineMangeConfig, ISpineMangeOptions, IBound, IRenderItem, ISpineFilters, IBonePosition, IBackground, OnUpdateCallback } from './type';
+} from "@esotericsoftware/spine-webgl";
+import logger from "./utils/logger";
+import SpineUtils from "./SpineUtils";
+import { parseColor } from "./utils/tool";
+import { DEFAULT_MIX } from "./utils/constant";
+import type {
+  ISpineMangeConfig,
+  ISpineMangeOptions,
+  IBound,
+  IRenderItem,
+  ISpineFilters,
+  IBonePosition,
+  IBackground,
+  OnUpdateCallback,
+} from "./type";
 
 export default class SpineManage {
   private context: ManagedWebGLRenderingContext;
   private renderer: SceneRenderer;
   private rafId: number | null = null;
   private time: TimeKeeper = new TimeKeeper();
+  private disposed = false;
 
   /**
    * map data
@@ -48,7 +58,10 @@ export default class SpineManage {
   public htmlCanvas: HTMLCanvasElement;
   public onUpdate!: OnUpdateCallback | undefined;
 
-  constructor(el: HTMLElement | HTMLCanvasElement, options?: ISpineMangeOptions) {
+  constructor(
+    el: HTMLElement | HTMLCanvasElement,
+    options?: ISpineMangeOptions,
+  ) {
     this.onUpdate = options?.onUpdate;
     this.htmlCanvas = SpineUtils.getCanvas(el);
     this.context = new ManagedWebGLRenderingContext(this.htmlCanvas, {
@@ -64,20 +77,31 @@ export default class SpineManage {
     this.setBackground(options?.background);
   }
 
+  public get isDisposed() {
+    return this.disposed;
+  }
+
   /**
    * 设置背景
    */
-  public async setBackground(background?: IBackground | string, immediatelyRender?: boolean) {
+  public async setBackground(
+    background?: IBackground | string,
+    immediatelyRender?: boolean,
+  ) {
     if (!background) {
       this.backgroundColor = { r: 0, g: 0, b: 0, a: 0 };
       this.backgroundConfig = null;
       return;
     }
-    if (typeof background === 'string') {
-      if (background.startsWith('#') || background.startsWith('rgb') || background.startsWith('rgba')) {
+    if (typeof background === "string") {
+      if (
+        background.startsWith("#") ||
+        background.startsWith("rgb") ||
+        background.startsWith("rgba")
+      ) {
         this.backgroundConfig = { color: background };
       } else {
-        this.backgroundConfig = { imageUrl: background, fit: 'cover' };
+        this.backgroundConfig = { imageUrl: background, fit: "cover" };
       }
     } else {
       this.backgroundConfig = background;
@@ -105,17 +129,26 @@ export default class SpineManage {
     const cacheKey = this.backgroundConfig.cacheKey || imageUrl;
     try {
       await this.loadTexture({
-        [cacheKey]: imageUrl
-      })
+        [cacheKey]: imageUrl,
+      });
     } catch (err) {
-      logger.error('背景图片加载失败:', err);
+      logger.error("背景图片加载失败:", err);
     }
   }
 
   public async loadSpine(config: ISpineMangeConfig): Promise<void> {
+    if (this.isDisposed) {
+      logger.warning("当前实例已销毁，无法加载动画");
+      return;
+    }
     const { uuid } = config;
     // 加载资源
-    const { isBinary, skelData, atlasData, skelSrc, atlasSrc } = await SpineUtils.loadAssets(config, this.assetManager, this.context);
+    const { isBinary, skelData, atlasData, skelSrc, atlasSrc } =
+      await SpineUtils.loadAssets(config, this.assetManager, this.context);
+    if (this.isDisposed) {
+      this.disposeAll();
+      return;
+    }
     // Create a AtlasAttachmentLoader that resolves region, mesh, boundingbox and path attachments
     const atlasLoader = new AtlasAttachmentLoader(atlasData);
     // Create a SkeletonBinary instance for parsing the .skel file.
@@ -134,7 +167,7 @@ export default class SpineManage {
     const skeleton = new Skeleton(skeletonData);
     // 如果默认皮肤不存在，则设置为第一个皮肤
     if (!skeletonData.defaultSkin) {
-      skeleton.setSkinByName(skeleton.data.skins?.[0]?.name || '');
+      skeleton.setSkinByName(skeleton.data.skins?.[0]?.name || "");
     }
     // Let the skeleton update the transforms of its bones.
     skeleton.updateWorldTransform(Physics.update);
@@ -179,7 +212,7 @@ export default class SpineManage {
         bound: config.bound,
       });
     } else {
-      const aniName = config.animationName || this.getAnimations(uuid)[0]
+      const aniName = config.animationName || this.getAnimations(uuid)[0];
       animationState.setAnimation(0, aniName, config.loop || false);
     }
   }
@@ -231,8 +264,10 @@ export default class SpineManage {
       skeleton.scaleX = scale;
       skeleton.scaleY = scale;
       // 计算缩放后的实际尺寸
-      const offsetX = -(bound.width / 2 + bound.x) * scale - this.htmlCanvas.width / 2;
-      const offsetY = -(bound.height / 2 + bound.y) * scale - this.htmlCanvas.height / 2;
+      const offsetX =
+        -(bound.width / 2 + bound.x) * scale - this.htmlCanvas.width / 2;
+      const offsetY =
+        -(bound.height / 2 + bound.y) * scale - this.htmlCanvas.height / 2;
       const anchorW = bound.width * scale * (0.5 - anchorX);
       const anchorH = bound.height * scale * (0.5 - anchorY);
       // 设置位置（考虑边界框的偏移）
@@ -258,7 +293,14 @@ export default class SpineManage {
     const canvasHeight = this.htmlCanvas.height;
     const imgWidth = image.width;
     const imgHeight = image.height;
-    const { drawWidth, drawHeight, drawX, drawY } = SpineUtils.getImageFitViewport(canvasWidth, canvasHeight, imgWidth, imgHeight, fit);
+    const { drawWidth, drawHeight, drawX, drawY } =
+      SpineUtils.getImageFitViewport(
+        canvasWidth,
+        canvasHeight,
+        imgWidth,
+        imgHeight,
+        fit,
+      );
     // @ts-ignore
     this.renderer.batcherShader = this.originalShader;
     this.renderer.drawTexture(texture, drawX, drawY, drawWidth, drawHeight);
@@ -266,14 +308,13 @@ export default class SpineManage {
   }
 
   private render(): void {
-
     // onUpdate
     try {
       if (this.onUpdate) {
         this.onUpdate(this.time, this.renderer.batcher.getDrawCalls());
       }
     } catch (err) {
-      logger.warning('onUpdate 出错:', err);
+      logger.warning("onUpdate 出错:", err);
     }
 
     try {
@@ -284,7 +325,7 @@ export default class SpineManage {
       this.drawBackground();
 
       // 更新和渲染所有骨骼
-      let prevFilterType: ISpineFilters['type'] | null = null;
+      let prevFilterType: ISpineFilters["type"] | null = null;
       this.renderArray.forEach((item, i) => {
         if (item.isHidden) return;
         const id = item.uuid;
@@ -299,7 +340,8 @@ export default class SpineManage {
           animationState.apply(skeleton);
           this.resize(skeleton, bound, customBound);
           // 设置shader
-          let curType: ISpineFilters['type'] = item.filters?.type ?? SpineUtils.ShaderType.NONE;
+          let curType: ISpineFilters["type"] =
+            item.filters?.type ?? SpineUtils.ShaderType.NONE;
           if (!SpineUtils.canUseShader(curType, item.filters?.params)) {
             curType = SpineUtils.ShaderType.NONE;
           }
@@ -320,9 +362,15 @@ export default class SpineManage {
           }
           prevFilterType = curType;
           // draw
-          this.renderer.drawSkeleton(skeleton, item.premultipliedAlpha || false);
+          this.renderer.drawSkeleton(
+            skeleton,
+            item.premultipliedAlpha || false,
+          );
           if (item.debugMode) {
-            this.renderer.drawSkeletonDebug(skeleton, item.premultipliedAlpha || false);
+            this.renderer.drawSkeletonDebug(
+              skeleton,
+              item.premultipliedAlpha || false,
+            );
           }
           // update slot follow
           this.updateSlotFollow(id);
@@ -330,9 +378,8 @@ export default class SpineManage {
       });
       // 结束渲染
       this.renderer.end();
-
     } catch (err) {
-      logger.error('渲染出错:', err);
+      logger.error("渲染出错:", err);
     }
 
     // 继续渲染循环
@@ -355,7 +402,11 @@ export default class SpineManage {
   /**
    * 增加slot挂点跟随
    */
-  public addSlotFollowListener(uuid: string, slotName: string, callback: (arg1?: IBonePosition) => void) {
+  public addSlotFollowListener(
+    uuid: string,
+    slotName: string,
+    callback: (arg1?: IBonePosition) => void,
+  ) {
     const item = this.getRenderItem(uuid);
     if (!item) {
       logger.warning(`当前spine【${uuid}】不存在，请先加载`);
@@ -364,7 +415,9 @@ export default class SpineManage {
     if (!item.followSlots) {
       item.followSlots = new Map();
     } else if (item.followSlots?.get(slotName)) {
-      logger.warning(`当前slotName【${slotName}】挂点跟随监听已存在，请勿重复添加`);
+      logger.warning(
+        `当前slotName【${slotName}】挂点跟随监听已存在，请勿重复添加`,
+      );
       return;
     }
     item.followSlots.set(slotName, callback);
@@ -390,11 +443,15 @@ export default class SpineManage {
       for (const [slotName, callback] of followSlots) {
         const slot = this.getSkeleton(uuid)?.findSlot(slotName);
         if (!slot) continue;
-        const position = SpineUtils.calcBonePosition(slot, this.renderer, this.htmlCanvas);
+        const position = SpineUtils.calcBonePosition(
+          slot,
+          this.renderer,
+          this.htmlCanvas,
+        );
         if (position && callback) callback(position);
       }
     } catch (err) {
-      logger.error('更新slot挂点跟随出错:', err);
+      logger.error("更新slot挂点跟随出错:", err);
     }
   }
 
@@ -416,16 +473,21 @@ export default class SpineManage {
   public playAnimation(
     uuid: string,
     options?: {
-      animationName?: string,
-      loop?: boolean,
-      bound?: IBound,
-      trackIndex?: number,
-    }
+      animationName?: string;
+      loop?: boolean;
+      bound?: IBound;
+      trackIndex?: number;
+    },
   ): void {
-    const { animationName, loop = false, bound, trackIndex = 0 } = options || {};
-    const aniName = animationName || this.getAnimations(uuid)[0]
+    const {
+      animationName,
+      loop = false,
+      bound,
+      trackIndex = 0,
+    } = options || {};
+    const aniName = animationName || this.getAnimations(uuid)[0];
     if (!this.hasAnimation(uuid, aniName)) {
-      logger.error('该动画不存在');
+      logger.error("该动画不存在");
       return;
     }
     // 设置参数
@@ -493,7 +555,10 @@ export default class SpineManage {
 
   public getAnimationName(uuid: string) {
     const animationState = this.getAnimationState(uuid);
-    return animationState?.getCurrent(0)?.animation?.name || this.getAnimations(uuid)[0];
+    return (
+      animationState?.getCurrent(0)?.animation?.name ||
+      this.getAnimations(uuid)[0]
+    );
   }
 
   public getSkeleton(uuid: string) {
@@ -511,7 +576,10 @@ export default class SpineManage {
     const skeleton = this.getSkeleton(uuid);
     if (!skeleton) return;
     const slot = skeleton.findSlot(slotName);
-    const newAttachment = skeleton.getAttachmentByName(slotName, attachmentName);
+    const newAttachment = skeleton.getAttachmentByName(
+      slotName,
+      attachmentName,
+    );
     // console.log(slot, newAttachment);
     if (slot !== null && newAttachment) {
       slot.attachment = newAttachment;
@@ -547,7 +615,13 @@ export default class SpineManage {
   ) {
     const skeleton = this.getSkeleton(uuid);
     if (!skeleton) return;
-    return SpineUtils.hackTextureBySlotName(skeleton, this.assetManager, textureName, slotName, persistent);
+    return SpineUtils.hackTextureBySlotName(
+      skeleton,
+      this.assetManager,
+      textureName,
+      slotName,
+      persistent,
+    );
   }
 
   /**
@@ -556,19 +630,19 @@ export default class SpineManage {
    * @param trackIndex 动画轨道索引，默认为 0
    */
   public seekToTime(uuid: string, time: number, trackIndex: number = 0) {
-    if (typeof time !== 'number' || time < 0) {
-      logger.warning('时间参数必须是大于等于0的数字');
+    if (typeof time !== "number" || time < 0) {
+      logger.warning("时间参数必须是大于等于0的数字");
       return;
     }
     const animationState = this.animationStates.get(uuid);
     const skeleton = this.skeletons.get(uuid);
     if (!animationState || !skeleton) {
-      logger.warning('动画数据未完成加载');
+      logger.warning("动画数据未完成加载");
       return;
     }
     const track = animationState.tracks[trackIndex];
     if (!track) {
-      logger.warning('当前动画轨道不存在');
+      logger.warning("当前动画轨道不存在");
       return;
     }
     // 设置轨道时间 & 动画时间
@@ -614,7 +688,7 @@ export default class SpineManage {
 
   public getVersion(uuid: string) {
     const skeleton = this.getSkeleton(uuid);
-    if (!skeleton) return '';
+    if (!skeleton) return "";
     return skeleton.data.version;
   }
 
@@ -659,7 +733,9 @@ export default class SpineManage {
   public hasAnimation(uuid: string, animationName: string) {
     const skeleton = this.skeletons.get(uuid);
     if (!skeleton) return false;
-    return skeleton.data.animations.some((animation) => animation.name === animationName);
+    return skeleton.data.animations.some(
+      (animation) => animation.name === animationName,
+    );
   }
 
   /**
@@ -710,12 +786,13 @@ export default class SpineManage {
     const item = this.renderArray.find((item) => item.uuid === uuid);
     if (item) {
       // 检查skel资源是否被其他item使用
-      const skelUsedByOthers = this.renderArray.some((otherItem) =>
-        otherItem.uuid !== uuid && otherItem.skel === item.skel
+      const skelUsedByOthers = this.renderArray.some(
+        (otherItem) => otherItem.uuid !== uuid && otherItem.skel === item.skel,
       );
       // 检查atlas资源是否被其他item使用
-      const atlasUsedByOthers = this.renderArray.some((otherItem) =>
-        otherItem.uuid !== uuid && otherItem.atlas === item.atlas
+      const atlasUsedByOthers = this.renderArray.some(
+        (otherItem) =>
+          otherItem.uuid !== uuid && otherItem.atlas === item.atlas,
       );
       // 只有在没有其他item使用时才移除资源
       if (!skelUsedByOthers) {
@@ -757,9 +834,10 @@ export default class SpineManage {
     this.renderer.dispose();
     // fix Too many active WebGL contexts. Oldest context will be lost.
     try {
-      this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
+      this.gl?.getExtension("WEBGL_lose_context")?.loseContext();
     } catch (err) {
-      logger.warning('GL lose context Err', err);
+      logger.warning("GL lose context Err", err);
     }
+    this.disposed = true;
   }
 }
