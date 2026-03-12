@@ -134,6 +134,10 @@ manager.resume("spine-1");
 
 #### 更新日志
 
+*** 4.2.3 ***
+
+- 更新`README`和`package.json`
+
 *** 4.2.1 ***
 
 - fix 正在加载资源时 dispose 实例导致的报错

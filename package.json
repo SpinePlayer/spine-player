@@ -1,6 +1,6 @@
 {
   "name": "spine-web-player",
-  "version": "4.2.1",
+  "version": "4.2.3",
   "type": "module",
   "files": [
     "dist",
@@ -56,5 +56,10 @@
   "dependencies": {
     "@esotericsoftware/spine-canvas": "~4.2.89",
     "@esotericsoftware/spine-webgl": "~4.2.89"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SpinePlayer/spine-player.git"
+  },
+  "homepage": "https://github.com/SpinePlayer/spine-player"
 }
