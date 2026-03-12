@@ -2,6 +2,12 @@
 
 基于 [Spine](https://esotericsoftware.com/) 官方运行时（Canvas / WebGL）封装的 Web 端 Spine 动画播放库，支持单实例与多实例管理，并提供 Vue3 组件。
 
+## 相关链接
+
+- **[演示地址](https://spineplayer.github.io/spine-playground/)** - 在线体验 Spine Playground
+- **[API 文档](https://spineplayer.github.io/spine-player-docs/)** - spine-web-player API 文档
+- **[Player 仓库](https://github.com/SpinePlayer/spine-player)** - spine-web-player 代码仓库
+
 ## 特性
 
 > - 可选 webgl/canvas2d/auto 渲染方式，默认 auto(优先 webgl、自动降级 canvas2d)
