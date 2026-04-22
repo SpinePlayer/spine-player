@@ -146,3 +146,9 @@ manager.resume("spine-1");
 *** 4.2.0 ***
 
 - 初始化版本
+
+## GitHub Star 实时成长曲线
+
+通过 Star History 的实时图表追踪 GitHub Star 增长趋势：
+
+[![Star History Chart](https://api.star-history.com/svg?repos=SpinePlayer/spine-player&type=Date)](https://github.com/SpinePlayer/spine-player)
