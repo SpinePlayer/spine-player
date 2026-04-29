@@ -33,6 +33,10 @@ export default class SpinePlayer {
     return null;
   }
 
+  public get dpr() {
+    return this.instance.dpr;
+  }
+
   public get htmlCanvas() {
     return this.instance.htmlCanvas;
   }
@@ -75,6 +79,10 @@ export default class SpinePlayer {
 
   public get isDisposed() {
     return this.instance.isDisposed;
+  }
+
+  public setDpr(dpr: number) {
+    return this.instance.dpr = dpr;
   }
 
   public loadSpine(config: ISpineConfig) {

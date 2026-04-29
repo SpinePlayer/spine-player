@@ -44,6 +44,7 @@ export default class SpineWebGL {
    * 属性
    */
   public gl!: WebGLRenderingContext;
+  public dpr = window.devicePixelRatio || 1; // 设备像素比
   public htmlCanvas: HTMLCanvasElement;
   public animationName!: string; // 当前的动画名称
   public assetManager!: AssetManager;
@@ -68,6 +69,8 @@ export default class SpineWebGL {
   private filters!: ISpineFilters | undefined;
   /** The original shader of the spine. */
   private originalShader!: Shader;
+  /** The max texture size of the spine. */
+  private maxTextureSize!: number;
 
   constructor(el: HTMLElement | HTMLCanvasElement, options: ISpineOptions) {
     this.onUpdate = options.onUpdate;
@@ -76,8 +79,10 @@ export default class SpineWebGL {
       alpha: true,
     });
     this.gl = this.context.gl;
+    this.maxTextureSize = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE); // 最大纹理大小
     this.renderer = new SceneRenderer(this.htmlCanvas, this.context, true);
-    this.renderer.resize(ResizeMode.Expand);
+    // this.renderer.resize(ResizeMode.Expand);
+    this.resizeCanvas(ResizeMode.Expand);
     // @ts-ignore
     this.originalShader = this.renderer.batcherShader;
     this.assetManager = new AssetManager(this.context);
@@ -360,11 +365,63 @@ export default class SpineWebGL {
     });
   }
 
+  private resizeCanvas(resizeMode: ResizeMode) {
+    const canvas = this.htmlCanvas;
+    let w = Math.round(canvas.clientWidth * this.dpr);
+    let h = Math.round(canvas.clientHeight * this.dpr);
+
+    // If the canvas size is larger than the max texture size, scale the canvas size to the max texture size
+    if (
+      this.maxTextureSize &&
+      (w > this.maxTextureSize || h > this.maxTextureSize)
+    ) {
+      const max = Math.max(w, h);
+      const s = this.maxTextureSize / max;
+      w = Math.round(w * s);
+      h = Math.round(h * s);
+      this.dpr = this.dpr * s; // 更新设备像素比
+    }
+
+    if (canvas.width != w || canvas.height != h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    this.gl.viewport(0, 0, canvas.width, canvas.height);
+
+    // Nothing to do for stretch, we simply apply the viewport size of the camera.
+    if (resizeMode === ResizeMode.Expand) {
+      this.renderer.camera.setViewport(w, h);
+    } else if (resizeMode === ResizeMode.Fit) {
+      const sourceWidth = canvas.width,
+        sourceHeight = canvas.height;
+      const targetWidth = this.renderer.camera.viewportWidth,
+        targetHeight = this.renderer.camera.viewportHeight;
+      const targetRatio = targetHeight / targetWidth;
+      const sourceRatio = sourceHeight / sourceWidth;
+      const scale =
+        targetRatio < sourceRatio
+          ? targetWidth / sourceWidth
+          : targetHeight / sourceHeight;
+      this.renderer.camera.setViewport(
+        sourceWidth * scale,
+        sourceHeight * scale,
+      );
+    }
+    this.renderer.camera.update();
+  }
+
   private resize() {
     if (!this.skeleton) return;
 
     // Resize the viewport to the full canvas.
-    this.renderer.resize(ResizeMode.Expand);
+    // this.renderer.resize(ResizeMode.Expand);
+    this.resizeCanvas(ResizeMode.Expand);
+
+    const { x: offsetX, y: offsetY } = SpineUtils.positionOffsetToNumber(
+      this.config.positionOffset,
+      { width: this.htmlCanvas.width, height: this.htmlCanvas.height },
+      this.dpr,
+    );
 
     // 计算合适的缩放比例（保持宽高比）
     const customScale = this.config.customScale || 1;
@@ -379,8 +436,8 @@ export default class SpineWebGL {
     // const dpr = window.devicePixelRatio || 1;
 
     // 设置位置（考虑边界框的偏移）
-    this.skeleton.x = -(this.bounds.width / 2 + this.bounds.x) * scale;
-    this.skeleton.y = -(this.bounds.height / 2 + this.bounds.y) * scale;
+    this.skeleton.x = -(this.bounds.width / 2 + this.bounds.x) * scale + offsetX;
+    this.skeleton.y = -(this.bounds.height / 2 + this.bounds.y) * scale + offsetY;
 
     // 更新世界变换
     this.skeleton.updateWorldTransform(Physics.update);

@@ -38,6 +38,7 @@ export default class SpinePlayer {
   /**
    * 属性
    */
+  public dpr = window.devicePixelRatio || 1; // 设备像素比
   public htmlCanvas: HTMLCanvasElement;
   public animationName!: string; // 动画名称
   public assetManager!: AssetManager;
@@ -210,7 +211,7 @@ export default class SpinePlayer {
 
   private resize() {
     // Resize the canvas drawing buffer if the canvas CSS width and height changed
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.dpr || 1;
     const customScale = this.config.customScale || 1;
     const w = Math.round(this.htmlCanvas.clientWidth * dpr);
     const h = Math.round(this.htmlCanvas.clientHeight * dpr);
@@ -218,16 +219,18 @@ export default class SpinePlayer {
       this.htmlCanvas.width = w;
       this.htmlCanvas.height = h;
     }
+    // 计算位置偏移
+    const { x: offsetX, y: offsetY } = SpineUtils.positionOffsetToNumber(
+      this.config.positionOffset,
+      { width: w, height: h },
+      dpr,
+    );
     // Center the skeleton and resize it so it fits inside the canvas.
     const scaleX = this.htmlCanvas.width / this.bounds.width;
     const scaleY = this.htmlCanvas.height / this.bounds.height;
     const scale = Math.min(scaleX, scaleY) * customScale;
-    this.skeleton.x =
-      (this.htmlCanvas.width - this.bounds.width * scale) / 2 -
-      this.bounds.x * scale;
-    this.skeleton.y =
-      (this.htmlCanvas.height + this.bounds.height * scale) / 2 +
-      this.bounds.y * scale;
+    this.skeleton.x = (this.htmlCanvas.width - this.bounds.width * scale) / 2 - this.bounds.x * scale + offsetX;
+    this.skeleton.y = (this.htmlCanvas.height + this.bounds.height * scale) / 2 + this.bounds.y * scale - offsetY;
     this.skeleton.scaleX = scale;
     this.skeleton.scaleY = -scale;
 

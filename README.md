@@ -134,6 +134,14 @@ manager.resume("spine-1");
 
 #### 更新日志
 
+*** 4.2.4 ***
+
+- 增加动画位置偏移调整参数
+- 支持设置画布`dpr`（默认取`devicePixelRatio`），方便外部控制画布分辨率，及渲染性能自主降级
+- 动态替换附件时，不再继承旧附件`textureRegion`的`degrees`、`offsetX`、`offsetY`等图集属性
+- fix 部分折叠屏手机上因画布过大触发webgl纹理尺寸(`maxTextureSize`)阈值导致的动画变形问题
+- fix 多动画管理器指定动画坐标及大小边界时，页面`resize`时，动画大小及坐标不会跟随`resize`问题
+
 *** 4.2.3 ***
 
 - 更新`README`和`package.json`

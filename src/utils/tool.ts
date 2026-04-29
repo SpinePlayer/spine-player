@@ -229,3 +229,44 @@ export function parseColor(color: string): { r: number; g: number; b: number; a:
 export function checkExtension(url: string, extension: string) {
   return url.split('?')[0]?.toLowerCase().endsWith(extension.toLowerCase());
 }
+
+/**
+ * 将值转换为数字
+ * @param raw 值
+ * @param basis 参照值，比如画布宽度
+ * @returns 数字
+ */
+export function parseValueToNumber(
+  raw: string | number | undefined | null,
+  basis: number | undefined, // 参照值，比如画布宽度
+  dpr: number = 1,
+): number {
+  if (raw === undefined || raw === null) return 0;
+  if (typeof raw === 'number') {
+    if (!Number.isFinite(raw)) {
+      return 0;
+    }
+    return raw * dpr;
+  }
+  if (typeof raw !== 'string') {
+    return 0;
+  }
+  const s = raw.trim();
+  if (s === '') return 0;
+
+  const percent = s.match(/^\s*([+-]?(?:\d*\.)?\d+)\s*%\s*$/);
+  if (percent) {
+    const n = parseFloat(percent[1]);
+    if (!Number.isFinite(n)) return 0;
+    if (basis === undefined || !Number.isFinite(basis) || basis <= 0) {
+      return 0;
+    }
+    return (n / 100) * basis;
+  }
+
+  const n = parseFloat(s.replace(/px\s*$/i, '').trim());
+  if (!Number.isFinite(n)) {
+    return 0;
+  }
+  return n * dpr;
+}

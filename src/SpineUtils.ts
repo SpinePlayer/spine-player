@@ -17,7 +17,7 @@ import {
   RegionAttachment,
 } from '@esotericsoftware/spine-webgl';
 import logger from './utils/logger';
-import { checkExtension } from './utils/tool';
+import { checkExtension, parseValueToNumber } from './utils/tool';
 import { KTX2Parser } from './ktx2/parseKTX2';
 import { GLTextureASTC } from './ktx2/GLTextureASTC';
 import { SPINE_VERSION, ShaderType } from './utils/constant';
@@ -372,9 +372,12 @@ export default class SpineUtils {
       v: 0,
       u2: 1,
       v2: 1,
-      degrees: oldRegion?.degrees || 0,
-      offsetX: oldRegion?.offsetX || 0,
-      offsetY: oldRegion?.offsetY || 0,
+      degrees: 0,
+      offsetX: 0,
+      offsetY: 0,
+      // degrees: oldRegion?.degrees || 0,
+      // offsetX: oldRegion?.offsetX || 0,
+      // offsetY: oldRegion?.offsetY || 0,
       width: texture.getImage().width || oldRegion?.width,
       height: texture.getImage().height || oldRegion?.height,
       originalWidth: texture.getImage().width || oldRegion?.originalWidth,
@@ -459,5 +462,29 @@ export default class SpineUtils {
       drawY = canvasHeight / 2 - drawY - drawHeight;
     }
     return { drawWidth, drawHeight, drawX, drawY };
+  }
+
+  /**
+   * 将 positionOffset 规范为画布 CSS 像素（x 向右、y 向上为正）。
+   * 支持 number、数字字符串、可选 px 后缀、百分比（须传入 canvasCssSize 对应轴尺寸）。
+   */
+  static positionOffsetToNumber(
+    positionOffset: ISpineConfig['positionOffset'],
+    canvasCssSize?: { width: number; height: number },
+    dpr: number = 1,
+  ): { x: number; y: number } {
+    if (
+      positionOffset == null ||
+      typeof positionOffset !== 'object' ||
+      Array.isArray(positionOffset)
+    ) {
+      return { x: 0, y: 0 };
+    }
+    const w = canvasCssSize?.width;
+    const h = canvasCssSize?.height;
+    return {
+      x: parseValueToNumber(positionOffset.x, w, dpr),
+      y: parseValueToNumber(positionOffset.y, h, dpr),
+    };
   }
 }

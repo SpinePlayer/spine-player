@@ -73,6 +73,11 @@ export interface ISpineConfig {
   renderFirstScreen?: boolean; // 是否渲染首屏，默认false，autoPlay为false时生效
   cleanAssetsCache?: boolean; // 是否清除上一个资源缓存，默认false
   uniBlendMode?: boolean; // 是否开启统一的标准混合模式，开启后有助于减少drawcall，但会相应的牺牲部分效果（因素材而异并不绝对，如：阴影），默认关闭
+  // 动画位置偏移，百分比或css像素值
+  positionOffset?: {
+    x?: string | number; // 动画位置偏移x，默认0
+    y?: string | number; // 动画位置偏移y，默认0
+  };
   // 资源路径
   assets: {
     useKTX2?: boolean; // 是否使用ktx2纹理，默认false
@@ -155,7 +160,7 @@ export interface ISpineProps extends Omit<ISpineConfig, 'hooks'>, Omit<ISpineOpt
 }
 
 
-export type IUpdateConfig = Pick<ISpineConfig, 'customScale' | 'premultipliedAlpha'>
+export type IUpdateConfig = Pick<ISpineConfig, 'customScale' | 'premultipliedAlpha' | 'positionOffset'>
 
 /**
  * 骨骼坐标位置

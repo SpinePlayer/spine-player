@@ -39,6 +39,7 @@ export default class SpineManage {
   /**
    * map data
    */
+  private maxTextureSize: number;
   private skeletons: Map<string, Skeleton> = new Map();
   private animationStates: Map<string, AnimationState> = new Map();
   private bounds: Map<string, IBound> = new Map();
@@ -54,6 +55,7 @@ export default class SpineManage {
    * 实例属性
    */
   public gl!: WebGLRenderingContext;
+  public dpr = window.devicePixelRatio || 1; // 设备像素比
   public assetManager: AssetManager;
   public htmlCanvas: HTMLCanvasElement;
   public onUpdate!: OnUpdateCallback | undefined;
@@ -68,8 +70,10 @@ export default class SpineManage {
       alpha: true,
     });
     this.gl = this.context.gl;
+    this.maxTextureSize = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE); // 最大纹理大小
     this.renderer = new SceneRenderer(this.htmlCanvas, this.context, true);
-    this.renderer.resize(ResizeMode.Expand);
+    // this.renderer.resize(ResizeMode.Expand);
+    this.resizeCanvas(ResizeMode.Expand);
     // @ts-ignore
     this.originalShader = this.renderer.batcherShader;
     this.assetManager = new AssetManager(this.context);
@@ -197,7 +201,7 @@ export default class SpineManage {
     this.skeletons.set(uuid, skeleton);
     this.animationStates.set(uuid, animationState);
     // 设置自定义边界
-    if (config.bound) this.customBounds.set(uuid, config.bound);
+    if (config.bound) this.updateBound(uuid, config.bound);
     // add event listener
     SpineUtils.addEventListeners(animationState, config);
     // loaded
@@ -234,11 +238,57 @@ export default class SpineManage {
     });
   }
 
+  private resizeCanvas(resizeMode: ResizeMode) {
+    const canvas = this.htmlCanvas;
+    let w = Math.round(canvas.clientWidth * this.dpr);
+    let h = Math.round(canvas.clientHeight * this.dpr);
+
+    // If the canvas size is larger than the max texture size, scale the canvas size to the max texture size
+    if (
+      this.maxTextureSize &&
+      (w > this.maxTextureSize || h > this.maxTextureSize)
+    ) {
+      const max = Math.max(w, h);
+      const s = this.maxTextureSize / max;
+      w = Math.round(w * s);
+      h = Math.round(h * s);
+      this.dpr = this.dpr * s; // 更新设备像素比
+    }
+
+    if (canvas.width != w || canvas.height != h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    this.context.gl.viewport(0, 0, canvas.width, canvas.height);
+
+    // Nothing to do for stretch, we simply apply the viewport size of the camera.
+    if (resizeMode === ResizeMode.Expand) {
+      this.renderer.camera.setViewport(w, h);
+    } else if (resizeMode === ResizeMode.Fit) {
+      const sourceWidth = canvas.width,
+        sourceHeight = canvas.height;
+      const targetWidth = this.renderer.camera.viewportWidth,
+        targetHeight = this.renderer.camera.viewportHeight;
+      const targetRatio = targetHeight / targetWidth;
+      const sourceRatio = sourceHeight / sourceWidth;
+      const scale =
+        targetRatio < sourceRatio
+          ? targetWidth / sourceWidth
+          : targetHeight / sourceHeight;
+      this.renderer.camera.setViewport(
+        sourceWidth * scale,
+        sourceHeight * scale,
+      );
+    }
+    this.renderer.camera.update();
+  }
+
   private resize(skeleton: Skeleton, bound: IBound, customBound?: IBound) {
     if (!skeleton) return;
 
     // 展开视口
-    this.renderer.resize(ResizeMode.Expand);
+    // this.renderer.resize(ResizeMode.Expand);
+    this.resizeCanvas(ResizeMode.Expand);
 
     if (!customBound) {
       // 计算合适的缩放比例（保持宽高比）
@@ -253,26 +303,25 @@ export default class SpineManage {
       skeleton.x = -(bound.width / 2 + bound.x) * scale;
       skeleton.y = -(bound.height / 2 + bound.y) * scale;
     } else {
-      const dpr = window.devicePixelRatio || 1;
+      const canvasW = this.htmlCanvas.width;
+      const canvasH = this.htmlCanvas.height;
       const anchorX = customBound.anchorX || 0;
       const anchorY = customBound.anchorY || 0;
       // 计算合适的缩放比例（保持宽高比）
-      const scaleX = (customBound.width * dpr) / bound.width;
-      const scaleY = (customBound.height * dpr) / bound.height;
+      const scaleX = (customBound.width * canvasW) / bound.width;
+      const scaleY = (customBound.height * canvasH) / bound.height;
       const scale = Math.min(scaleX, scaleY); // 使用 Math.min 而不是 Math.max，确保完整显示
       // 应用统一的缩放
       skeleton.scaleX = scale;
       skeleton.scaleY = scale;
       // 计算缩放后的实际尺寸
-      const offsetX =
-        -(bound.width / 2 + bound.x) * scale - this.htmlCanvas.width / 2;
-      const offsetY =
-        -(bound.height / 2 + bound.y) * scale - this.htmlCanvas.height / 2;
+      const offsetX = -(bound.width / 2 + bound.x) * scale - canvasW / 2;
+      const offsetY = -(bound.height / 2 + bound.y) * scale - canvasH / 2;
       const anchorW = bound.width * scale * (0.5 - anchorX);
       const anchorH = bound.height * scale * (0.5 - anchorY);
       // 设置位置（考虑边界框的偏移）
-      skeleton.x = customBound.x * dpr + offsetX + anchorW;
-      skeleton.y = customBound.y * dpr + offsetY + anchorH;
+      skeleton.x = customBound.x * canvasW + offsetX + anchorW;
+      skeleton.y = customBound.y * canvasH + offsetY + anchorH;
     }
 
     // 更新世界变换
@@ -464,7 +513,13 @@ export default class SpineManage {
       logger.warning(`当前spine【${uuid}】不存在，请先加载`);
       return;
     }
-    this.customBounds.set(uuid, bound);
+    const { clientWidth, clientHeight } = this.htmlCanvas;
+    this.customBounds.set(uuid, {
+      x: bound.x / clientWidth, // 转换为相对画布尺寸的坐标
+      y: bound.y / clientHeight,
+      width: bound.width / clientWidth,
+      height: bound.height / clientHeight,
+    });
   }
 
   /**
@@ -491,7 +546,7 @@ export default class SpineManage {
       return;
     }
     // 设置参数
-    if (bound) this.customBounds.set(uuid, bound);
+    if (bound) this.updateBound(uuid, bound);
     // 重头播放指定动画
     const animationState = this.animationStates.get(uuid);
     if (animationState) {
